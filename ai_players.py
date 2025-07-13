@@ -90,17 +90,22 @@ class   OpenAIPlayer(AIPlayer):
                 decision = json.loads(decision_text)
                 action_str = decision.get("action", "fold").lower()
                 amount = decision.get("amount", 0)
+                reasoning = decision.get("reasoning", "")
                 
                 if action_str == "fold":
-                    return PlayerAction(GameAction.FOLD)
+                    action = PlayerAction(GameAction.FOLD)
                 elif action_str == "call":
-                    return PlayerAction(GameAction.CALL)
+                    action = PlayerAction(GameAction.CALL)
                 elif action_str == "raise":
-                    return PlayerAction(GameAction.RAISE, max(amount, game_state.current_bet))
+                    action = PlayerAction(GameAction.RAISE, max(amount, game_state.current_bet))
                 elif action_str == "check":
-                    return PlayerAction(GameAction.CHECK)
+                    action = PlayerAction(GameAction.CHECK)
                 else:
-                    return PlayerAction(GameAction.FOLD)
+                    action = PlayerAction(GameAction.FOLD)
+                
+                # Store reasoning in the action object
+                action.reasoning = reasoning
+                return action
                     
             except json.JSONDecodeError:
                 # Fallback: try to parse simple text response
@@ -153,17 +158,22 @@ class AnthropicPlayer(AIPlayer):
                 decision = json.loads(decision_text)
                 action_str = decision.get("action", "fold").lower()
                 amount = decision.get("amount", 0)
+                reasoning = decision.get("reasoning", "")
                 
                 if action_str == "fold":
-                    return PlayerAction(GameAction.FOLD)
+                    action = PlayerAction(GameAction.FOLD)
                 elif action_str == "call":
-                    return PlayerAction(GameAction.CALL)
+                    action = PlayerAction(GameAction.CALL)
                 elif action_str == "raise":
-                    return PlayerAction(GameAction.RAISE, max(amount, game_state.current_bet))
+                    action = PlayerAction(GameAction.RAISE, max(amount, game_state.current_bet))
                 elif action_str == "check":
-                    return PlayerAction(GameAction.CHECK)
+                    action = PlayerAction(GameAction.CHECK)
                 else:
-                    return PlayerAction(GameAction.FOLD)
+                    action = PlayerAction(GameAction.FOLD)
+                
+                # Store reasoning in the action object
+                action.reasoning = reasoning
+                return action
                     
             except json.JSONDecodeError:
                 # Fallback: try to parse simple text response

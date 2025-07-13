@@ -159,6 +159,7 @@ class GameAction(Enum):
 class PlayerAction:
     action: GameAction
     amount: int = 0
+    reasoning: str = ""
 
 @dataclass
 class GameState:

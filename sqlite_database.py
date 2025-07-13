@@ -11,7 +11,7 @@ from database_models import (
 )
 
 class SQLiteDatabase(DatabaseInterface):
-    def __init__(self, db_path: str = "poker_benchmark.db"):
+    def __init__(self, db_path: str = "poker_benchmark_v3.db"):
         self.db_path = db_path
         self.connection = None
     
@@ -323,6 +323,31 @@ class SQLiteDatabase(DatabaseInterface):
         if not player_row:
             return None
         
+        # Check if player has any hands
+        cursor.execute("SELECT COUNT(*) as hand_count FROM player_hands WHERE player_id = ?", (player_id,))
+        hand_count = cursor.fetchone()['hand_count']
+        if hand_count == 0:
+            # Return default stats for players with no hands
+            return PlayerStatsModel(
+                player_id=player_id,
+                player_name=player_row['name'],
+                model_name=player_row['model_name'],
+                total_hands=0,
+                hands_won=0,
+                win_percentage=0,
+                total_chips_won=0,
+                total_chips_lost=0,
+                net_profit=0,
+                roi=0,
+                avg_pot_won=0,
+                fold_percentage=0,
+                call_percentage=0,
+                raise_percentage=0,
+                check_percentage=0,
+                preflop_aggression=0,
+                postflop_aggression=0
+            )
+        
         # Get comprehensive stats
         cursor.execute("""
             SELECT 
@@ -352,8 +377,9 @@ class SQLiteDatabase(DatabaseInterface):
             GROUP BY action_type
         """, (player_id,))
         
-        action_stats = {row['action_type']: row['count'] for row in cursor.fetchall()}
-        total_actions = sum(action_stats.values())
+        action_rows = cursor.fetchall()
+        action_stats = {row['action_type']: row['count'] for row in action_rows if row['action_type'] and row['count']}
+        total_actions = sum(action_stats.values()) if action_stats else 0
         
         # Calculate percentages
         fold_pct = (action_stats.get('fold', 0) / total_actions * 100) if total_actions > 0 else 0
@@ -373,8 +399,8 @@ class SQLiteDatabase(DatabaseInterface):
         """, (player_id,))
         
         aggr_row = cursor.fetchone()
-        preflop_aggr = (aggr_row['preflop_raises'] / aggr_row['preflop_actions'] * 100) if aggr_row['preflop_actions'] > 0 else 0
-        postflop_aggr = (aggr_row['postflop_raises'] / aggr_row['postflop_actions'] * 100) if aggr_row['postflop_actions'] > 0 else 0
+        preflop_aggr = (aggr_row['preflop_raises'] / aggr_row['preflop_actions'] * 100) if aggr_row and aggr_row['preflop_actions'] and aggr_row['preflop_actions'] > 0 else 0
+        postflop_aggr = (aggr_row['postflop_raises'] / aggr_row['postflop_actions'] * 100) if aggr_row and aggr_row['postflop_actions'] and aggr_row['postflop_actions'] > 0 else 0
         
         total_hands = stats_row['total_hands']
         hands_won = stats_row['hands_won']

@@ -20,7 +20,7 @@ db: DatabaseInterface = None
 @app.on_event("startup")
 async def startup_event():
     global db
-    db = SQLiteDatabase("poker_benchmark.db")
+    db = SQLiteDatabase("poker_benchmark_v3.db")
     await db.connect()
 
 @app.on_event("shutdown")
@@ -32,25 +32,36 @@ async def shutdown_event():
 async def dashboard(request: Request):
     """Main dashboard showing sessions and overall stats"""
     
-    # Get all sessions
-    sessions = await db.list_sessions()
-    
-    # Get player stats
-    player_stats = await db.get_all_player_stats()
-    
-    # Get model comparison
-    model_comparison = await db.get_model_comparison_stats()
-    
-    # Get recent hands
-    recent_hands = await db.get_recent_hands(limit=10)
-    
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "sessions": sessions,
-        "player_stats": player_stats,
-        "model_comparison": model_comparison,
-        "recent_hands": recent_hands
-    })
+    try:
+        # Get all sessions
+        sessions = await db.list_sessions()
+        
+        # Get player stats
+        player_stats = await db.get_all_player_stats()
+        
+        # Get model comparison
+        model_comparison = await db.get_model_comparison_stats()
+        
+        # Get recent hands
+        recent_hands = await db.get_recent_hands(limit=10)
+        
+        return templates.TemplateResponse("dashboard.html", {
+            "request": request,
+            "sessions": sessions or [],
+            "player_stats": player_stats or [],
+            "model_comparison": model_comparison or [],
+            "recent_hands": recent_hands or []
+        })
+    except Exception as e:
+        print(f"Error in dashboard: {e}")
+        # Return empty dashboard if there's an error
+        return templates.TemplateResponse("dashboard.html", {
+            "request": request,
+            "sessions": [],
+            "player_stats": [],
+            "model_comparison": [],
+            "recent_hands": []
+        })
 
 @app.get("/session/{session_id}", response_class=HTMLResponse)
 async def session_detail(request: Request, session_id: int):

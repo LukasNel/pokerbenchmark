@@ -208,7 +208,7 @@ class GameSimulator:
                         if self.db_integration and hand_id:
                             await self.db_integration.record_action(
                                 hand_id, player_name, betting_round, action.action.value,
-                                action.amount, game.pot, None  # reasoning not available yet
+                                action.amount, game.pot, getattr(action, 'reasoning', '')
                             )
                             
                         hand_actions.append({

@@ -6,10 +6,21 @@
 <div class="row">
     <div class="col-md-12">
         <h1>Poker AI Benchmark Dashboard</h1>
+        {% if not sessions and not player_stats %}
+            <div class="alert alert-info mt-4">
+                <h4>Welcome to the Poker AI Benchmark!</h4>
+                <p>No data found. To get started:</p>
+                <ol>
+                    <li>Run a benchmark: <code>python benchmark.py --sessions 2 --hands-per-session 10</code></li>
+                    <li>Refresh this page to see the results</li>
+                </ol>
+            </div>
+        {% endif %}
     </div>
 </div>
 
 <!-- Model Comparison Stats -->
+{% if model_comparison %}
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -53,8 +64,10 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Player Stats -->
+{% if player_stats %}
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -112,8 +125,10 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Sessions -->
+{% if sessions %}
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -159,8 +174,10 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Recent Hands -->
+{% if recent_hands %}
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -212,5 +229,6 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 {% endblock %}
