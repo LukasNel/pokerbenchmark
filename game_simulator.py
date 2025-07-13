@@ -1,9 +1,11 @@
 import asyncio
 import time
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from poker_game import TexasHoldem, GameAction, PlayerAction
 from ai_players import AIPlayer
+from database_interface import DatabaseInterface
+from database_integration import DatabaseIntegration
 
 @dataclass
 class GameResults:
@@ -22,19 +24,30 @@ class BenchmarkResults:
 
 class GameSimulator:
     def __init__(self, players: List[AIPlayer], starting_chips: int = 1000, 
-                 small_blind: int = 5, big_blind: int = 10):
+                 small_blind: int = 5, big_blind: int = 10, db: Optional[DatabaseInterface] = None):
         self.players = players
         self.player_names = [p.name for p in players]
         self.starting_chips = starting_chips
         self.small_blind = small_blind
         self.big_blind = big_blind
+        self.db = db
+        self.db_integration = DatabaseIntegration(db) if db else None
         
-    async def simulate_session(self, max_hands: int = 100, time_limit: int = 300) -> GameResults:
+    async def simulate_session(self, max_hands: int = 100, time_limit: int = 300, 
+                              session_name: Optional[str] = None) -> GameResults:
         start_time = time.time()
         game = TexasHoldem(self.player_names, self.starting_chips, self.small_blind, self.big_blind)
         
         hands_played = 0
         hand_results = []
+        session_id = None
+        
+        # Initialize database session if available
+        if self.db_integration and session_name:
+            session_id = await self.db_integration.init_session(
+                session_name, self.players, self.starting_chips, 
+                self.small_blind, self.big_blind, max_hands
+            )
         
         print(f"  Starting chips: {', '.join(f'{p}: ${game.chips[p]}' for p in self.player_names)}")
         
@@ -44,7 +57,7 @@ class GameSimulator:
             
             try:
                 print(f"\n  Hand {hands_played + 1}:")
-                hand_result = await self._play_single_hand(game)
+                hand_result = await self._play_single_hand(game, session_id, hands_played + 1)
                 hand_results.append(hand_result)
                 hands_played += 1
                 
@@ -67,6 +80,10 @@ class GameSimulator:
                 
         session_duration = time.time() - start_time
         
+        # Complete database session if available
+        if self.db_integration and session_id:
+            await self.db_integration.complete_session(session_id, hands_played)
+        
         return GameResults(
             player_final_chips=game.chips.copy(),
             hands_played=hands_played,
@@ -74,9 +91,20 @@ class GameSimulator:
             hand_results=hand_results
         )
     
-    async def _play_single_hand(self, game: TexasHoldem) -> Dict[str, Any]:
+    async def _play_single_hand(self, game: TexasHoldem, session_id: Optional[int] = None, 
+                               hand_number: int = 0) -> Dict[str, Any]:
         game_state = game.start_hand()
         hand_actions = []
+        hand_id = None
+        
+        # Initialize database hand if available
+        if self.db_integration and session_id:
+            hole_cards_str = {name: [str(card) for card in cards] 
+                             for name, cards in game.hole_cards.items()}
+            hand_id = await self.db_integration.start_hand(
+                session_id, hand_number, game.dealer_position, 
+                hole_cards_str, game.chips.copy()
+            )
         
         # Play through all betting rounds
         for betting_round in ["preflop", "flop", "turn", "river"]:
@@ -175,6 +203,13 @@ class GameSimulator:
                             else:
                                 action_str = "check"  # If call amount is 0, it's really a check
                         print(f"      {player_name}: {action_str}")
+                        
+                        # Record action in database
+                        if self.db_integration and hand_id:
+                            await self.db_integration.record_action(
+                                hand_id, player_name, betting_round, action.action.value,
+                                action.amount, game.pot, None  # reasoning not available yet
+                            )
                             
                         hand_actions.append({
                             "player": player_name,
@@ -208,6 +243,15 @@ class GameSimulator:
         
         # Determine winner and distribute pot
         winners = game._determine_winner()
+        
+        # Complete hand in database
+        if self.db_integration and hand_id:
+            community_cards_str = [str(card) for card in game_state.community_cards]
+            await self.db_integration.complete_hand(
+                hand_id, game.pot, community_cards_str, winners, 
+                game.chips.copy(), game.folded_players
+            )
+        
         game.next_hand()
         
         return {
@@ -233,7 +277,8 @@ class GameSimulator:
                 player.hands_won = 0
                 player.total_winnings = 0
             
-            session_result = await self.simulate_session(hands_per_session)
+            session_name = f"Session_{session_num + 1}" if num_sessions > 1 else "Single_Session"
+            session_result = await self.simulate_session(hands_per_session, session_name=session_name)
             session_results.append(session_result)
             total_hands += session_result.hands_played
             

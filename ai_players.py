@@ -137,7 +137,7 @@ class AnthropicPlayer(AIPlayer):
             message = await asyncio.to_thread(
                 client.messages.create,
                 model=self.model,
-                max_tokens=150,
+                max_tokens=1024,
                 temperature=0.7,
                 messages=[
                     {"role": "user", "content": f"You are an expert poker player. {context}"}
@@ -145,6 +145,7 @@ class AnthropicPlayer(AIPlayer):
             )
             
             decision_text = message.content[0].text.strip()
+            print("full response: ", decision_text)
             decision_text = find_the_json(decision_text)
             print(decision_text)
             # Parse JSON response

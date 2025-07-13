@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}{{ session.session_name }} - Poker AI Benchmark{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item active">{{ session.session_name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <h2>{{ session.session_name }}</h2>
+        <p class="text-muted">{{ session.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+    </div>
+</div>
+
+<!-- Session Summary -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Session Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Total Hands:</strong> {{ session_summary.total_hands }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Starting Chips:</strong> ${{ session_summary.starting_chips }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Blinds:</strong> ${{ session.small_blind }}/${{ session.big_blind }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Status:</strong>
+                        <span class="badge {% if session.completed_at %}bg-success{% else %}bg-warning{% endif %}">
+                            {% if session.completed_at %}Completed{% else %}In Progress{% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <strong>Biggest Winner:</strong> 
+                        <span class="positive">{{ session_summary.biggest_winner }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Biggest Loser:</strong> 
+                        <span class="negative">{{ session_summary.biggest_loser }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Biggest Pot:</strong> ${{ session_summary.biggest_pot }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Final Chip Counts -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Final Chip Counts</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for player_name, final_chips in session_summary.final_chip_counts.items() %}
+                        <div class="col-md-3 mb-2">
+                            <strong>{{ player_name }}:</strong>
+                            <span class="{% if final_chips > session_summary.starting_chips %}positive{% elif final_chips < session_summary.starting_chips %}negative{% else %}neutral{% endif %}">
+                                ${{ final_chips }}
+                            </span>
+                            <small class="text-muted">
+                                ({% if final_chips > session_summary.starting_chips %}+{% endif %}${{ final_chips - session_summary.starting_chips }})
+                            </small>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hands in Session -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>All Hands</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Hand #</th>
+                                <th>Pot Size</th>
+                                <th>Community Cards</th>
+                                <th>Winner(s)</th>
+                                <th>Total Winnings</th>
+                                <th>Players</th>
+                                <th>Actions</th>
+                                <th>Betting Rounds</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hand in hands %}
+                            <tr>
+                                <td>
+                                    <a href="/hand/{{ hand.hand_id }}">{{ hand.hand_number }}</a>
+                                </td>
+                                <td>${{ hand.pot_size }}</td>
+                                <td>
+                                    {% for card in hand.community_cards %}
+                                        <span class="poker-card">{{ card }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% for winner in hand.winner_names %}
+                                        <span class="badge bg-success">{{ winner }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>${{ hand.total_winnings }}</td>
+                                <td>{{ hand.num_players }}</td>
+                                <td>{{ hand.num_actions }}</td>
+                                <td>{{ hand.betting_rounds_completed }}</td>
+                                <td>{{ hand.created_at.strftime('%H:%M:%S') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
