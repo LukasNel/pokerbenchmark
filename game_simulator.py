@@ -129,7 +129,10 @@ class GameSimulator:
             players_who_acted = set()  # Track who has acted this round
             last_to_act = None  # Track last player to bet/raise
             
-            while not betting_complete:
+            max_betting_actions = 50  # Prevent infinite loops
+            betting_action_count = 0
+            
+            while not betting_complete and betting_action_count < max_betting_actions:
                 active_players = [p for p in game.active_players if p not in game.folded_players]
                 
                 if len(active_players) <= 1:
@@ -145,9 +148,13 @@ class GameSimulator:
                             if player not in players_who_acted:
                                 players_to_act.append(player)
                         else:
-                            # Someone has bet - need to match or exceed
+                            # Someone has bet - need to match or exceed (unless all-in)
                             if game.player_bets[player] < game.current_bet:
                                 players_to_act.append(player)
+                    # Players who are all-in don't need to act again
+                    elif game.chips[player] == 0 and player not in players_who_acted:
+                        # Mark all-in players as having acted
+                        players_who_acted.add(player)
                 
                 # Check if betting is complete
                 if not players_to_act:
@@ -158,9 +165,16 @@ class GameSimulator:
                             betting_complete = True
                             break
                     else:
-                        # Everyone has called/folded
+                        # Everyone has called/folded or gone all-in
                         betting_complete = True
                         break
+                
+                # Additional check: if everyone is all-in, betting is complete
+                all_in_count = sum(1 for player in active_players if game.chips[player] == 0)
+                if all_in_count >= len(active_players) - 1:  # All but one or all players all-in
+                    print(f"      All players all-in or folded - advancing to next round")
+                    betting_complete = True
+                    break
                 
                 # Get actions from each player who needs to act
                 for player_name in players_to_act:
@@ -195,11 +209,19 @@ class GameSimulator:
                         action_str = action.action.value
                         if action.action.value == "raise":
                             total_bet = game.player_bets.get(player_name, 0) + action.amount
-                            action_str += f" to ${total_bet}"
+                            # Check if this is an all-in (player has no chips left after this bet)
+                            if action.amount >= game.chips[player_name]:
+                                action_str = f"all-in ${action.amount}"
+                            else:
+                                action_str += f" to ${total_bet}"
                         elif action.action.value == "call":
                             call_amount = game.current_bet - game.player_bets.get(player_name, 0)
                             if call_amount > 0:
-                                action_str += f" ${call_amount}"
+                                # Check if this is an all-in call
+                                if call_amount >= game.chips[player_name]:
+                                    action_str = f"all-in ${call_amount}"
+                                else:
+                                    action_str += f" ${call_amount}"
                             else:
                                 action_str = "check"  # If call amount is 0, it's really a check
                         print(f"      {player_name}: {action_str}")
@@ -238,6 +260,11 @@ class GameSimulator:
                         game.process_action(player_name, fold_action)
                         players_who_acted.add(player_name)
                         print(f"      {player_name}: fold (error)")
+                
+                betting_action_count += 1
+            
+            if betting_action_count >= max_betting_actions:
+                print(f"      Warning: Max betting actions reached, forcing round completion")
             
             # Betting round complete - continue to next round
         

@@ -157,11 +157,19 @@
                                         <div class="d-flex justify-content-between align-items-start">
                                             <div>
                                                 <strong>{{ player_names[action.player_id] }}</strong>
-                                                <span class="action-{{ action.action_type.value }} fw-bold">{{ action.action_type.value }}</span>
+                                                {% set is_all_in = action.reasoning and "all-in" in action.reasoning.lower() %}
+                                                {% if is_all_in %}
+                                                    <span class="action-all-in fw-bold">ALL-IN</span>
+                                                {% else %}
+                                                    <span class="action-{{ action.action_type.value }} fw-bold">{{ action.action_type.value }}</span>
+                                                {% endif %}
                                                 {% if action.amount > 0 %}
                                                     <span class="text-muted">${{ action.amount }}</span>
                                                 {% endif %}
                                                 <small class="text-muted">(pot: ${{ action.pot_size_after }})</small>
+                                                {% if is_all_in %}
+                                                    <span class="badge bg-danger ms-2">ALL-IN</span>
+                                                {% endif %}
                                             </div>
                                             {% if action.reasoning %}
                                                 <span class="badge bg-info ms-2" title="AI provided reasoning">🧠</span>
