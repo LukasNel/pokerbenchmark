@@ -12,6 +12,7 @@ load_dotenv()
 
 from ai_players import OpenAIPlayer, AnthropicPlayer, RandomPlayer
 from game_simulator import GameSimulator
+from sqlite_database import SQLiteDatabase
 
 def print_results(results):
     print("\n" + "="*60)
@@ -118,8 +119,12 @@ async def main():
     print(f"  Hands per session: {args.hands_per_session}")
     print(f"  Starting chips: ${args.starting_chips:,}")
     
+    # Setup database
+    db = SQLiteDatabase()
+    await db.connect()
+    
     # Run benchmark
-    simulator = GameSimulator(players, args.starting_chips)
+    simulator = GameSimulator(players, args.starting_chips, db=db)
     
     try:
         results = await simulator.run_benchmark(args.sessions, args.hands_per_session)
@@ -135,6 +140,9 @@ async def main():
         print(f"\nError during benchmark: {e}")
         import traceback
         traceback.print_exc()
+    finally:
+        if db:
+            await db.disconnect()
 
 if __name__ == "__main__":
     asyncio.run(main())

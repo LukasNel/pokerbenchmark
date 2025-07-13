@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Poker AI Benchmark{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Poker AI Benchmark Dashboard</h1>
+        {% if not sessions and not player_stats %}
+            <div class="alert alert-info mt-4">
+                <h4>Welcome to the Poker AI Benchmark!</h4>
+                <p>No data found. To get started:</p>
+                <ol>
+                    <li>Run a benchmark: <code>python benchmark.py --sessions 2 --hands-per-session 10</code></li>
+                    <li>Refresh this page to see the results</li>
+                </ol>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Model Comparison Stats -->
+{% if model_comparison %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Model Performance Comparison</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Type</th>
+                                <th>Total Hands</th>
+                                <th>Hands Won</th>
+                                <th>Win %</th>
+                                <th>Total Winnings</th>
+                                <th>Avg Pot Won</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for model in model_comparison %}
+                            <tr>
+                                <td><strong>{{ model.model_name }}</strong></td>
+                                <td>{{ model.model_type }}</td>
+                                <td>{{ model.total_hands }}</td>
+                                <td>{{ model.hands_won }}</td>
+                                <td>
+                                    <span class="win-percentage {% if model.win_percentage > 25 %}positive{% elif model.win_percentage > 15 %}neutral{% else %}negative{% endif %}">
+                                        {{ "%.1f"|format(model.win_percentage) }}%
+                                    </span>
+                                </td>
+                                <td>${{ model.total_winnings }}</td>
+                                <td>${{ "%.0f"|format(model.avg_pot_won) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Player Stats -->
+{% if player_stats %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Individual Player Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Model</th>
+                                <th>Total Hands</th>
+                                <th>Hands Won</th>
+                                <th>Win %</th>
+                                <th>Net Profit</th>
+                                <th>ROI</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player in player_stats %}
+                            <tr>
+                                <td>
+                                    <a href="/player/{{ player.player_id }}">{{ player.player_name }}</a>
+                                </td>
+                                <td>{{ player.model_name }}</td>
+                                <td>{{ player.total_hands }}</td>
+                                <td>{{ player.hands_won }}</td>
+                                <td>
+                                    <span class="win-percentage {% if player.win_percentage > 25 %}positive{% elif player.win_percentage > 15 %}neutral{% else %}negative{% endif %}">
+                                        {{ "%.1f"|format(player.win_percentage) }}%
+                                    </span>
+                                </td>
+                                <td class="{% if player.net_profit > 0 %}positive{% elif player.net_profit < 0 %}negative{% else %}neutral{% endif %}">
+                                    ${{ player.net_profit }}
+                                </td>
+                                <td class="{% if player.roi > 0 %}positive{% elif player.roi < 0 %}negative{% else %}neutral{% endif %}">
+                                    {{ "%.1f"|format(player.roi) }}%
+                                </td>
+                                <td>
+                                    <small>
+                                        F: {{ "%.0f"|format(player.fold_percentage) }}% | 
+                                        C: {{ "%.0f"|format(player.call_percentage) }}% | 
+                                        R: {{ "%.0f"|format(player.raise_percentage) }}%
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Sessions -->
+{% if sessions %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Sessions</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Hands Played</th>
+                                <th>Starting Chips</th>
+                                <th>Blinds</th>
+                                <th>Created</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in sessions %}
+                            <tr>
+                                <td>{{ session.session_name }}</td>
+                                <td>{{ session.total_hands_played }}</td>
+                                <td>${{ session.starting_chips }}</td>
+                                <td>${{ session.small_blind }}/${{ session.big_blind }}</td>
+                                <td>{{ session.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <span class="badge {% if session.completed_at %}bg-success{% else %}bg-warning{% endif %}">
+                                        {% if session.completed_at %}Completed{% else %}In Progress{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="/session/{{ session.id }}" class="btn btn-sm btn-primary">View Hands</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Hands -->
+{% if recent_hands %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Hands</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Hand</th>
+                                <th>Session</th>
+                                <th>Pot Size</th>
+                                <th>Community Cards</th>
+                                <th>Winner(s)</th>
+                                <th>Players</th>
+                                <th>Actions</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hand in recent_hands %}
+                            <tr>
+                                <td>
+                                    <a href="/hand/{{ hand.hand_id }}">Hand #{{ hand.hand_number }}</a>
+                                </td>
+                                <td>{{ hand.session_id }}</td>
+                                <td>${{ hand.pot_size }}</td>
+                                <td>
+                                    {% for card in hand.community_cards %}
+                                        <span class="poker-card">{{ card }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% for winner in hand.winner_names %}
+                                        <span class="badge bg-success">{{ winner }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ hand.num_players }}</td>
+                                <td>{{ hand.num_actions }}</td>
+                                <td>{{ hand.created_at.strftime('%H:%M:%S') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

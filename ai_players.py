@@ -31,10 +31,11 @@ You need to make a decision. Available actions:
 - fold: Give up your hand
 - call: Match the current bet (${game_state.current_bet})
 - raise: Increase the bet (specify amount)
+- all-in: Bet all remaining chips (specify amount)
 - check: Pass if no bet to call
 
-Respond with JSON format: {{"action": "fold/call/raise/check", "amount": 0, "reasoning":""}}
-If raising, specify the raise amount in the "amount" field.
+Respond with JSON format: {{"action": "fold/call/raise/all-in/check", "amount": 0, "reasoning":""}}
+If raising or going all-in, specify the amount in the "amount" field.
 
 Consider your hand strength, pot odds, and position. Play strategically to maximize your winnings."""
         return context
@@ -70,7 +71,7 @@ class   OpenAIPlayer(AIPlayer):
                 )
             else:
                 messages = [
-                    {"role": "system", "content": "You are an aggresive expert poker player. Always respond with valid JSON containing your decision."},
+                    {"role": "system", "content": "You are an aggressive expert poker player. Always respond with valid JSON containing your decision."},
                     {"role": "user", "content": context}
                 ]
                 response = await client.chat.completions.create(
@@ -90,17 +91,26 @@ class   OpenAIPlayer(AIPlayer):
                 decision = json.loads(decision_text)
                 action_str = decision.get("action", "fold").lower()
                 amount = decision.get("amount", 0)
+                reasoning = decision.get("reasoning", "")
                 
                 if action_str == "fold":
-                    return PlayerAction(GameAction.FOLD)
+                    action = PlayerAction(GameAction.FOLD)
                 elif action_str == "call":
-                    return PlayerAction(GameAction.CALL)
+                    action = PlayerAction(GameAction.CALL)
                 elif action_str == "raise":
-                    return PlayerAction(GameAction.RAISE, max(amount, game_state.current_bet))
+                    action = PlayerAction(GameAction.RAISE, max(amount, game_state.current_bet))
+                elif action_str == "all-in":
+                    # All-in is a raise with all remaining chips
+                    my_chips = game_state.player_chips.get(self.name, 0)
+                    action = PlayerAction(GameAction.RAISE, my_chips)
                 elif action_str == "check":
-                    return PlayerAction(GameAction.CHECK)
+                    action = PlayerAction(GameAction.CHECK)
                 else:
-                    return PlayerAction(GameAction.FOLD)
+                    action = PlayerAction(GameAction.FOLD)
+                
+                # Store reasoning in the action object
+                action.reasoning = reasoning
+                return action
                     
             except json.JSONDecodeError:
                 # Fallback: try to parse simple text response
@@ -137,7 +147,7 @@ class AnthropicPlayer(AIPlayer):
             message = await asyncio.to_thread(
                 client.messages.create,
                 model=self.model,
-                max_tokens=150,
+                max_tokens=1024,
                 temperature=0.7,
                 messages=[
                     {"role": "user", "content": f"You are an expert poker player. {context}"}
@@ -145,6 +155,7 @@ class AnthropicPlayer(AIPlayer):
             )
             
             decision_text = message.content[0].text.strip()
+            print("full response: ", decision_text)
             decision_text = find_the_json(decision_text)
             print(decision_text)
             # Parse JSON response
@@ -152,17 +163,26 @@ class AnthropicPlayer(AIPlayer):
                 decision = json.loads(decision_text)
                 action_str = decision.get("action", "fold").lower()
                 amount = decision.get("amount", 0)
+                reasoning = decision.get("reasoning", "")
                 
                 if action_str == "fold":
-                    return PlayerAction(GameAction.FOLD)
+                    action = PlayerAction(GameAction.FOLD)
                 elif action_str == "call":
-                    return PlayerAction(GameAction.CALL)
+                    action = PlayerAction(GameAction.CALL)
                 elif action_str == "raise":
-                    return PlayerAction(GameAction.RAISE, max(amount, game_state.current_bet))
+                    action = PlayerAction(GameAction.RAISE, max(amount, game_state.current_bet))
+                elif action_str == "all-in":
+                    # All-in is a raise with all remaining chips
+                    my_chips = game_state.player_chips.get(self.name, 0)
+                    action = PlayerAction(GameAction.RAISE, my_chips)
                 elif action_str == "check":
-                    return PlayerAction(GameAction.CHECK)
+                    action = PlayerAction(GameAction.CHECK)
                 else:
-                    return PlayerAction(GameAction.FOLD)
+                    action = PlayerAction(GameAction.FOLD)
+                
+                # Store reasoning in the action object
+                action.reasoning = reasoning
+                return action
                     
             except json.JSONDecodeError:
                 # Fallback: try to parse simple text response

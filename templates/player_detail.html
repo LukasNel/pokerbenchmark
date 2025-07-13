@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}{{ player.name }} - Poker AI Benchmark{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item active">{{ player.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <h2>{{ player.name }}</h2>
+        <p class="text-muted">{{ player.model_name }} ({{ player.model_type }})</p>
+    </div>
+</div>
+
+<!-- Player Stats -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Player Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 stats-card">
+                        <div class="text-center">
+                            <h4 class="win-percentage {% if stats.win_percentage > 25 %}positive{% elif stats.win_percentage > 15 %}neutral{% else %}negative{% endif %}">
+                                {{ "%.1f"|format(stats.win_percentage) }}%
+                            </h4>
+                            <p class="text-muted">Win Rate</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 stats-card">
+                        <div class="text-center">
+                            <h4 class="{% if stats.net_profit > 0 %}positive{% elif stats.net_profit < 0 %}negative{% else %}neutral{% endif %}">
+                                ${{ stats.net_profit }}
+                            </h4>
+                            <p class="text-muted">Net Profit</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 stats-card">
+                        <div class="text-center">
+                            <h4 class="{% if stats.roi > 0 %}positive{% elif stats.roi < 0 %}negative{% else %}neutral{% endif %}">
+                                {{ "%.1f"|format(stats.roi) }}%
+                            </h4>
+                            <p class="text-muted">ROI</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 stats-card">
+                        <div class="text-center">
+                            <h4>{{ stats.hands_won }}/{{ stats.total_hands }}</h4>
+                            <p class="text-muted">Hands Won</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h6>Action Distribution</h6>
+                        <div class="mb-2">
+                            <strong>Fold:</strong> {{ "%.1f"|format(stats.fold_percentage) }}%
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-danger" style="width: {{ stats.fold_percentage }}%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Call:</strong> {{ "%.1f"|format(stats.call_percentage) }}%
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-primary" style="width: {{ stats.call_percentage }}%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Raise:</strong> {{ "%.1f"|format(stats.raise_percentage) }}%
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-warning" style="width: {{ stats.raise_percentage }}%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Check:</strong> {{ "%.1f"|format(stats.check_percentage) }}%
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-secondary" style="width: {{ stats.check_percentage }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Aggression</h6>
+                        <div class="mb-2">
+                            <strong>Preflop Aggression:</strong> {{ "%.1f"|format(stats.preflop_aggression) }}%
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-info" style="width: {{ stats.preflop_aggression }}%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Postflop Aggression:</strong> {{ "%.1f"|format(stats.postflop_aggression) }}%
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-info" style="width: {{ stats.postflop_aggression }}%"></div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <strong>Average Pot Won:</strong> ${{ "%.0f"|format(stats.avg_pot_won) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Win Percentage Over Time -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Win Percentage Over Time</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="winPercentageChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Hands -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Hand History</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Hand</th>
+                                <th>Hole Cards</th>
+                                <th>Starting Chips</th>
+                                <th>Ending Chips</th>
+                                <th>Result</th>
+                                <th>Position</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hand in player_hands[-20:] %}
+                            <tr>
+                                <td>
+                                    <a href="/hand/{{ hand.hand_id }}">Hand #{{ hand.hand_id }}</a>
+                                </td>
+                                <td>
+                                    {% for card in hand.hole_cards %}
+                                        <span class="poker-card">{{ card }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>${{ hand.starting_chips }}</td>
+                                <td>${{ hand.ending_chips }}</td>
+                                <td class="{% if hand.ending_chips > hand.starting_chips %}positive{% elif hand.ending_chips < hand.starting_chips %}negative{% else %}neutral{% endif %}">
+                                    {% set profit = hand.ending_chips - hand.starting_chips %}
+                                    {% if profit > 0 %}+{% endif %}${{ profit }}
+                                </td>
+                                <td>
+                                    {% if hand.final_position == 1 %}
+                                        <span class="badge bg-success">1st</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ hand.final_position }}{{ "nd" if hand.final_position == 2 else "rd" if hand.final_position == 3 else "th" }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if hand.folded %}
+                                        <span class="badge bg-danger">Folded</span>
+                                    {% endif %}
+                                    {% if hand.all_in %}
+                                        <span class="badge bg-warning">All-In</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Win percentage over time chart
+    const ctx = document.getElementById('winPercentageChart').getContext('2d');
+    const winPercentageData = {{ win_percentage_data | tojson }};
+    
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: winPercentageData.map(d => d.hand_number),
+            datasets: [{
+                label: 'Win Percentage',
+                data: winPercentageData.map(d => d.win_percentage),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Hand Number'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

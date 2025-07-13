@@ -116,3 +116,6 @@ The AIs are prompted to:
 - `ai_players.py`: AI player implementations for different APIs
 - `game_simulator.py`: Multi-session tournament simulation
 - `benchmark.py`: Main CLI application
+
+
+FULL CREDIT TO MR. WILLIAM DIAMOND, who is the genius behind the concept of the poker benchmark. https://www.will-diamond.com/

@@ -159,6 +159,7 @@ class GameAction(Enum):
 class PlayerAction:
     action: GameAction
     amount: int = 0
+    reasoning: str = ""
 
 @dataclass
 class GameState:
@@ -227,11 +228,15 @@ class TexasHoldem:
             self.folded_players.add(player)
         elif action.action == GameAction.CALL:
             call_amount = self.current_bet - self.player_bets[player]
+            # Cap call amount to available chips (all-in call)
+            call_amount = min(call_amount, self.chips[player])
             self._place_bet(player, call_amount)
         elif action.action == GameAction.RAISE:
-            total_bet = self.player_bets[player] + action.amount
+            # Cap raise amount to available chips (all-in raise)
+            actual_raise = min(action.amount, self.chips[player])
+            total_bet = self.player_bets[player] + actual_raise
             if total_bet > self.current_bet:
-                self._place_bet(player, action.amount)
+                self._place_bet(player, actual_raise)
                 self.current_bet = total_bet
         elif action.action == GameAction.CHECK:
             if self.player_bets[player] < self.current_bet:

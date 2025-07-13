@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Hand #{{ hand_detail.hand.hand_number }} - Poker AI Benchmark{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="/session/{{ hand_detail.session.id }}">{{ hand_detail.session.session_name }}</a></li>
+                <li class="breadcrumb-item active">Hand #{{ hand_detail.hand.hand_number }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <h2>Hand #{{ hand_detail.hand.hand_number }}</h2>
+        <p class="text-muted">{{ hand_detail.hand.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+    </div>
+</div>
+
+<!-- Hand Summary -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Hand Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Pot Size:</strong> ${{ hand_detail.hand.pot_size }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Dealer Position:</strong> {{ hand_detail.hand.dealer_position }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Community Cards:</strong>
+                        {% for card in hand_detail.hand.community_cards %}
+                            <span class="poker-card">{{ card }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <strong>Winners:</strong>
+                        {% for winner_id in hand_detail.hand.winner_ids %}
+                            <span class="badge bg-success">{{ player_names[winner_id] }}</span>
+                            <small class="text-muted">(+${{ hand_detail.hand.winnings[winner_id] }})</small>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Player Hole Cards -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Player Hole Cards</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Hole Cards</th>
+                                <th>Starting Chips</th>
+                                <th>Ending Chips</th>
+                                <th>Result</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player_hand in hand_detail.players %}
+                            <tr>
+                                <td>
+                                    <a href="/player/{{ player_hand.player_id }}">
+                                        {{ player_names[player_hand.player_id] }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% for card in player_hand.hole_cards %}
+                                        <span class="poker-card">{{ card }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>${{ player_hand.starting_chips }}</td>
+                                <td>${{ player_hand.ending_chips }}</td>
+                                <td class="{% if player_hand.ending_chips > player_hand.starting_chips %}positive{% elif player_hand.ending_chips < player_hand.starting_chips %}negative{% else %}neutral{% endif %}">
+                                    {% set profit = player_hand.ending_chips - player_hand.starting_chips %}
+                                    {% if profit > 0 %}+{% endif %}${{ profit }}
+                                </td>
+                                <td>
+                                    {% if player_hand.final_position == 1 %}
+                                        <span class="badge bg-success">Winner</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ player_hand.final_position }}{{ "nd" if player_hand.final_position == 2 else "rd" if player_hand.final_position == 3 else "th" }}</span>
+                                    {% endif %}
+                                    {% if player_hand.folded %}
+                                        <span class="badge bg-danger">Folded</span>
+                                    {% endif %}
+                                    {% if player_hand.all_in %}
+                                        <span class="badge bg-warning">All-In</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Betting Action -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Betting Action</h5>
+            </div>
+            <div class="card-body">
+                {% set betting_rounds = ["preflop", "flop", "turn", "river"] %}
+                {% for round_name in betting_rounds %}
+                    {% if actions_by_round.get(round_name) %}
+                        <div class="betting-round">
+                            <h6>{{ round_name.title() }}</h6>
+                            {% if round_name != "preflop" %}
+                                <div class="mb-2">
+                                    <strong>Board:</strong>
+                                    {% if round_name == "flop" %}
+                                        {% for card in hand_detail.hand.community_cards[:3] %}
+                                            <span class="poker-card">{{ card }}</span>
+                                        {% endfor %}
+                                    {% elif round_name == "turn" %}
+                                        {% for card in hand_detail.hand.community_cards[:4] %}
+                                            <span class="poker-card">{{ card }}</span>
+                                        {% endfor %}
+                                    {% elif round_name == "river" %}
+                                        {% for card in hand_detail.hand.community_cards %}
+                                            <span class="poker-card">{{ card }}</span>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            <div class="hand-actions">
+                                {% for action in actions_by_round[round_name] %}
+                                    <div class="action-card mb-2 p-3 border rounded">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>{{ player_names[action.player_id] }}</strong>
+                                                {% set is_all_in = action.reasoning and "all-in" in action.reasoning.lower() %}
+                                                {% if is_all_in %}
+                                                    <span class="action-all-in fw-bold">ALL-IN</span>
+                                                {% else %}
+                                                    <span class="action-{{ action.action_type.value }} fw-bold">{{ action.action_type.value }}</span>
+                                                {% endif %}
+                                                {% if action.amount > 0 %}
+                                                    <span class="text-muted">${{ action.amount }}</span>
+                                                {% endif %}
+                                                <small class="text-muted">(pot: ${{ action.pot_size_after }})</small>
+                                                {% if is_all_in %}
+                                                    <span class="badge bg-danger ms-2">ALL-IN</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if action.reasoning %}
+                                                <span class="badge bg-info ms-2" title="AI provided reasoning">🧠</span>
+                                            {% endif %}
+                                        </div>
+                                        {% if action.reasoning %}
+                                            <div class="reasoning-box">
+                                                <small>
+                                                    <strong>💭 AI Reasoning:</strong><br>
+                                                    {{ action.reasoning }}
+                                                </small>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
